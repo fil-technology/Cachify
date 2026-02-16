@@ -22,7 +22,7 @@
 		20EACBBE5E4323946CA480F0 /* CacheCleaner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheCleaner.swift; sourceTree = "<group>"; };
 		2F75A9216B3E8E90609785C6 /* CachifyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CachifyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		33A2CF490F4FC4DFD5BB3139 /* CacheModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheModels.swift; sourceTree = "<group>"; };
-		516D751CB738B4BC3B377549 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Assets.xcassets; path = App/Assets.xcassets; sourceTree = SOURCE_ROOT; };
+		516D751CB738B4BC3B377549 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6746D519F682E1DA9C5BA31F /* ActionArcRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionArcRing.swift; sourceTree = "<group>"; };
 		98636D6ED62065256222F899 /* CachifyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachifyApp.swift; sourceTree = "<group>"; };
 		9B59B507C9BA23C300B81499 /* SkeletonBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonBlock.swift; sourceTree = "<group>"; };
@@ -275,6 +275,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/CachifyApp.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Cachify;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © Fil Technology";
@@ -292,6 +293,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/CachifyApp.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Cachify;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © Fil Technology";

@@ -20,12 +20,13 @@ targets:
     sources:
       - path: App/Sources
       - path: App/Assets.xcassets
-        type: folder
+        buildPhase: resources
     entitlements:
       path: App/CachifyApp.entitlements
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_APP_SANDBOX: YES
         INFOPLIST_KEY_CFBundleDisplayName: Cachify
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © Fil Technology
