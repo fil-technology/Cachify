@@ -7,15 +7,45 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		080FF2B9AB1917AD6736F158 /* CachifyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8645ED960676081584093CA7 /* CachifyApp.swift */; };
+		35CF82AA20053F7CE0BE8A26 /* CacheCleaner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20EACBBE5E4323946CA480F0 /* CacheCleaner.swift */; };
+		56C70DD7590CC3DEF7C8D4F2 /* SkeletonBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B59B507C9BA23C300B81499 /* SkeletonBlock.swift */; };
+		5B191C1DB75A62BEB0B43C52 /* ActionArcRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6746D519F682E1DA9C5BA31F /* ActionArcRing.swift */; };
+		6193956DDC852F0AC75E9000 /* CacheModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A2CF490F4FC4DFD5BB3139 /* CacheModels.swift */; };
+		8401BF02534F0C05783C3DF8 /* CleanerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A93942193770B52AD2485EDB /* CleanerViewModel.swift */; };
+		9CCF9FDE2CBB200E18E17E37 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE88D73C0B5F74206ECCB03C /* ContentView.swift */; };
+		E747535D390F2D267EC6A89C /* CacheCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B668BB27E972C2F448A9C6D8 /* CacheCatalog.swift */; };
+		FE5C7E3CFB65EF5B1AC9D541 /* CachifyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98636D6ED62065256222F899 /* CachifyApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		20EACBBE5E4323946CA480F0 /* CacheCleaner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheCleaner.swift; sourceTree = "<group>"; };
 		2F75A9216B3E8E90609785C6 /* CachifyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CachifyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		8645ED960676081584093CA7 /* CachifyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachifyApp.swift; sourceTree = "<group>"; };
+		33A2CF490F4FC4DFD5BB3139 /* CacheModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheModels.swift; sourceTree = "<group>"; };
+		6746D519F682E1DA9C5BA31F /* ActionArcRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionArcRing.swift; sourceTree = "<group>"; };
+		98636D6ED62065256222F899 /* CachifyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachifyApp.swift; sourceTree = "<group>"; };
+		9B59B507C9BA23C300B81499 /* SkeletonBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonBlock.swift; sourceTree = "<group>"; };
+		A93942193770B52AD2485EDB /* CleanerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanerViewModel.swift; sourceTree = "<group>"; };
+		B668BB27E972C2F448A9C6D8 /* CacheCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheCatalog.swift; sourceTree = "<group>"; };
+		BE88D73C0B5F74206ECCB03C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		1ADE2ED984DF02C1933DE879 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A93942193770B52AD2485EDB /* CleanerViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		45C5A2C37F436A7D4F095DD1 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				33A2CF490F4FC4DFD5BB3139 /* CacheModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
 		493226396E05C679664CFC94 = {
 			isa = PBXGroup;
 			children = (
@@ -24,10 +54,40 @@
 			);
 			sourceTree = "<group>";
 		};
+		4E542C8ABAEF2F97E7B311D1 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				6746D519F682E1DA9C5BA31F /* ActionArcRing.swift */,
+				9B59B507C9BA23C300B81499 /* SkeletonBlock.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		55A7525C0972BB0F7D0BAC29 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				98636D6ED62065256222F899 /* CachifyApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		61DE38C5B2D73FE4246ECD16 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				B668BB27E972C2F448A9C6D8 /* CacheCatalog.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
 		AE2FCB2F068A9FACF84196E3 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				8645ED960676081584093CA7 /* CachifyApp.swift */,
+				55A7525C0972BB0F7D0BAC29 /* App */,
+				61DE38C5B2D73FE4246ECD16 /* Data */,
+				45C5A2C37F436A7D4F095DD1 /* Models */,
+				D758B00F3AB1735683222017 /* Services */,
+				1ADE2ED984DF02C1933DE879 /* ViewModels */,
+				D9B27A3781A54C68BB119B0F /* Views */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -38,6 +98,23 @@
 				2F75A9216B3E8E90609785C6 /* CachifyApp.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D758B00F3AB1735683222017 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				20EACBBE5E4323946CA480F0 /* CacheCleaner.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		D9B27A3781A54C68BB119B0F /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				BE88D73C0B5F74206ECCB03C /* ContentView.swift */,
+				4E542C8ABAEF2F97E7B311D1 /* Components */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		EFB925F73413AE9DF296873C /* App */ = {
@@ -102,7 +179,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				080FF2B9AB1917AD6736F158 /* CachifyApp.swift in Sources */,
+				5B191C1DB75A62BEB0B43C52 /* ActionArcRing.swift in Sources */,
+				E747535D390F2D267EC6A89C /* CacheCatalog.swift in Sources */,
+				35CF82AA20053F7CE0BE8A26 /* CacheCleaner.swift in Sources */,
+				6193956DDC852F0AC75E9000 /* CacheModels.swift in Sources */,
+				FE5C7E3CFB65EF5B1AC9D541 /* CachifyApp.swift in Sources */,
+				8401BF02534F0C05783C3DF8 /* CleanerViewModel.swift in Sources */,
+				9CCF9FDE2CBB200E18E17E37 /* ContentView.swift in Sources */,
+				56C70DD7590CC3DEF7C8D4F2 /* SkeletonBlock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
