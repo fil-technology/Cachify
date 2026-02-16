@@ -309,6 +309,18 @@ final class CleanerViewModel: ObservableObject {
             .mapValues { entries in entries.reduce(0) { $0 + $1.size } }
     }
 
+    var sortedTargets: [CacheTarget] {
+        let order = Dictionary(uniqueKeysWithValues: allTargets.enumerated().map { ($1.id, $0) })
+        return allTargets.sorted { lhs, rhs in
+            let lhsSize = targetSizesByID[lhs.id] ?? 0
+            let rhsSize = targetSizesByID[rhs.id] ?? 0
+            if lhsSize != rhsSize {
+                return lhsSize > rhsSize
+            }
+            return (order[lhs.id] ?? 0) < (order[rhs.id] ?? 0)
+        }
+    }
+
     func selectAll() {
         selectedTargetIDs = Set(allTargets.map(\.id))
     }
@@ -563,7 +575,8 @@ struct ContentView: View {
                 Button("Deselect All") { vm.clearSelection() }
             }
 
-            ForEach(allTargets) { target in
+            let targets = vm.sortedTargets
+            ForEach(Array(targets.enumerated()), id: \.element.id) { index, target in
                 let style = vm.style(for: target.id)
                 HStack(spacing: 12) {
                     Image(systemName: style.icon)
@@ -600,7 +613,7 @@ struct ContentView: View {
                 }
                 .padding(.vertical, 6)
 
-                if target.id != allTargets.last?.id {
+                if index < targets.count - 1 {
                     Divider().opacity(0.45)
                 }
             }
