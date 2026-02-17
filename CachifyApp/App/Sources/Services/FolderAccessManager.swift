@@ -6,7 +6,6 @@ final class FolderAccessManager {
     enum RequestResult {
         case granted(path: String)
         case cancelled
-        case wrongFolder(expected: String)
         case failed
     }
 
@@ -32,13 +31,13 @@ final class FolderAccessManager {
     func requestHomeFolderAccess() async -> RequestResult {
         let panel = NSOpenPanel()
         panel.title = "Grant Folder Access"
-        panel.message = "Select your home folder so Cachify can scan cache directories in sandbox mode."
+        panel.message = "Select the folder Cachify should scan for caches (your Home folder is recommended)."
         panel.prompt = "Grant Access"
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = false
-        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
+        panel.directoryURL = preferredUserHomeURL()
 
         let response: NSApplication.ModalResponse
         if let window = NSApp.keyWindow ?? NSApp.mainWindow {
@@ -53,11 +52,6 @@ final class FolderAccessManager {
 
         guard response == .OK, let selected = panel.url else {
             return .cancelled
-        }
-
-        let expectedHome = FileManager.default.homeDirectoryForCurrentUser.path
-        guard selected.path == expectedHome else {
-            return .wrongFolder(expected: expectedHome)
         }
 
         guard saveBookmark(for: selected) else {
@@ -108,10 +102,36 @@ final class FolderAccessManager {
                 _ = saveBookmark(for: url)
             }
 
+            if isLikelySandboxContainer(url.path) {
+                defaults.removeObject(forKey: StorageKey.homeFolderBookmark)
+                return nil
+            }
+
             return url
         } catch {
             defaults.removeObject(forKey: StorageKey.homeFolderBookmark)
             return nil
         }
+    }
+
+    private func preferredUserHomeURL() -> URL {
+        let username = NSUserName()
+        if let path = NSHomeDirectoryForUser(username),
+           !path.isEmpty {
+            return URL(fileURLWithPath: path)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    private func isLikelySandboxContainer(_ path: String) -> Bool {
+        let runtimeHome = NSHomeDirectory()
+        let username = NSUserName()
+        let realHome = NSHomeDirectoryForUser(username) ?? runtimeHome
+
+        let looksLikeContainer = runtimeHome.contains("/Library/Containers/")
+        let pointsToRuntimeHome = path == runtimeHome
+        let differsFromRealHome = runtimeHome != realHome
+
+        return looksLikeContainer && pointsToRuntimeHome && differsFromRealHome
     }
 }

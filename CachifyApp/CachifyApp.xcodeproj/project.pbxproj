@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -21,7 +21,7 @@
 
 /* Begin PBXFileReference section */
 		20EACBBE5E4323946CA480F0 /* CacheCleaner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheCleaner.swift; sourceTree = "<group>"; };
-		2F75A9216B3E8E90609785C6 /* CachifyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CachifyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2F75A9216B3E8E90609785C6 /* Cachify.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cachify.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		33A2CF490F4FC4DFD5BB3139 /* CacheModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheModels.swift; sourceTree = "<group>"; };
 		516D751CB738B4BC3B377549 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6746D519F682E1DA9C5BA31F /* ActionArcRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionArcRing.swift; sourceTree = "<group>"; };
@@ -99,7 +99,7 @@
 		C6FA38451E4A2D3E847A8413 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				2F75A9216B3E8E90609785C6 /* CachifyApp.app */,
+				2F75A9216B3E8E90609785C6 /* Cachify.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -147,7 +147,7 @@
 			);
 			name = CachifyApp;
 			productName = CachifyApp;
-			productReference = 2F75A9216B3E8E90609785C6 /* CachifyApp.app */;
+			productReference = 2F75A9216B3E8E90609785C6 /* Cachify.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -278,7 +278,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/CachifyApp.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = L7T5538V86;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Cachify;
@@ -297,7 +300,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/CachifyApp.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = L7T5538V86;
 				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Cachify;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";

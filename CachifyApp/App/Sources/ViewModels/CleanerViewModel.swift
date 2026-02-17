@@ -20,6 +20,8 @@ final class CleanerViewModel: ObservableObject {
     @Published var allTimeSavedBytes: Int64
     @Published var hasFolderAccess = false
     @Published var folderAccessPath: String?
+    @Published private(set) var lastNonEmptyScanEntries: [ScanEntry] = []
+    @Published private(set) var hasCleanedInSession = false
 
     private let cleaner = CacheCleaner()
     private let folderAccessManager = FolderAccessManager()
@@ -64,14 +66,26 @@ final class CleanerViewModel: ObservableObject {
     }
 
     var targetSummaries: [TargetSummary] {
-        let grouped = Dictionary(grouping: scopedEntries, by: \.targetID)
-            .mapValues { entries in entries.reduce(0) { $0 + $1.size } }
+        summaries(from: scopedEntries)
+    }
 
-        return allTargets.compactMap { target in
-            guard let size = grouped[target.id], size > 0 else { return nil }
-            return TargetSummary(id: target.id, target: target, size: size)
+    var displayedTargetSummaries: [TargetSummary] {
+        if !targetSummaries.isEmpty {
+            return targetSummaries
         }
-        .sorted { $0.size > $1.size }
+        return summaries(from: lastNonEmptyScanEntries)
+    }
+
+    var displayedTotalBytes: Int64 {
+        let current = totalBytes
+        if current > 0 {
+            return current
+        }
+        return lastNonEmptyScanEntries.reduce(0) { $0 + $1.size }
+    }
+
+    var isShowingSnapshotData: Bool {
+        totalBytes == 0 && !lastNonEmptyScanEntries.isEmpty
     }
 
     var targetSizesByID: [String: Int64] {
@@ -111,6 +125,16 @@ final class CleanerViewModel: ObservableObject {
         targetSizesByID[targetID] ?? 0
     }
 
+    func target(for targetID: String) -> CacheTarget? {
+        allTargets.first { $0.id == targetID }
+    }
+
+    func entries(for targetID: String) -> [ScanEntry] {
+        scanEntries
+            .filter { $0.targetID == targetID }
+            .sorted { $0.size > $1.size }
+    }
+
     func isEntrySelected(_ entry: ScanEntry) -> Bool {
         selectedEntryIDs.contains(entry.id)
     }
@@ -139,12 +163,10 @@ final class CleanerViewModel: ObservableObject {
                 hasFolderAccess = true
                 folderAccessPath = path
                 await cleaner.setHomePath(path)
-                status = "Access granted. Scanning..."
+                status = "Access granted for \(path). Scanning..."
                 scan()
             case .cancelled:
                 status = "Folder access canceled."
-            case .wrongFolder(let expected):
-                status = "Select your Home folder: \(expected)"
             case .failed:
                 status = "Failed to store folder access permission."
             }
@@ -173,11 +195,26 @@ final class CleanerViewModel: ObservableObject {
                 self.status = "Unable to access selected folder."
                 return
             }
-            self.scanEntries = results
-            self.selectedEntryIDs = Set(results.map(\.id))
+
+            // Update only the targets being scanned so a narrow scan (e.g. Docker only)
+            // does not wipe previously discovered entries from other targets.
+            let scannedTargetIDs = Set(targets.map(\.id))
+            let untouchedEntries = self.scanEntries.filter { !scannedTargetIDs.contains($0.targetID) }
+            self.scanEntries = (untouchedEntries + results).sorted { $0.size > $1.size }
+
+            let untouchedSelectedIDs = Set(
+                untouchedEntries
+                    .filter { self.selectedEntryIDs.contains($0.id) }
+                    .map(\.id)
+            )
+            self.selectedEntryIDs = untouchedSelectedIDs.union(Set(results.map(\.id)))
+
+            if !results.isEmpty {
+                self.lastNonEmptyScanEntries = self.scanEntries
+            }
             self.hasScanned = true
             self.isScanning = false
-            self.status = results.isEmpty ? "No cache found" : "Found \(results.count) cache path(s)"
+            self.status = results.isEmpty ? "No cache found for selected targets" : "Found \(results.count) cache path(s)"
         }
     }
 
@@ -198,22 +235,25 @@ final class CleanerViewModel: ObservableObject {
         let entries = selectedEntriesForCleaning
 
         Task {
-            guard let result = await folderAccessManager.withSecurityScopedAccess({
-                await cleaner.clean(entries: entries)
-            }) else {
-                self.isCleaning = false
-                self.status = "Unable to access selected folder."
-                return
-            }
-            self.scanEntries.removeAll { result.removedEntryIDs.contains($0.id) }
-            self.selectedEntryIDs.subtract(result.removedEntryIDs)
-            self.savedNowBytes = result.reclaimedBytes
-            self.allTimeSavedBytes += result.reclaimedBytes
-            self.defaults.set(self.savedNowBytes, forKey: StatsKey.lastSavedBytes)
-            self.defaults.set(self.allTimeSavedBytes, forKey: StatsKey.allTimeSavedBytes)
-            self.isCleaning = false
-            self.status = "Removed \(result.removed) path(s), failed \(result.failed), reclaimed \(self.formatBytes(result.reclaimedBytes))"
+            let result = await self.performClean(entries: entries)
+            guard result != nil else { return }
             self.scan()
+        }
+    }
+
+    func clean(entries: [ScanEntry]) {
+        guard !entries.isEmpty else { return }
+        guard !isScanning && !isCleaning else { return }
+        guard hasFolderAccess else {
+            status = "Grant Home folder access first."
+            return
+        }
+
+        isCleaning = true
+        status = "Cleaning selected caches..."
+
+        Task {
+            _ = await self.performClean(entries: entries)
         }
     }
 
@@ -228,5 +268,37 @@ final class CleanerViewModel: ObservableObject {
 
     func style(for targetID: String) -> TargetStyle {
         targetStyles[targetID] ?? TargetStyle(color: .gray, icon: "externaldrive")
+    }
+
+    private func performClean(entries: [ScanEntry]) async -> (removed: Int, failed: Int, reclaimedBytes: Int64, removedEntryIDs: Set<UUID>)? {
+        guard let result = await folderAccessManager.withSecurityScopedAccess({
+            await cleaner.clean(entries: entries)
+        }) else {
+            self.isCleaning = false
+            self.status = "Unable to access selected folder."
+            return nil
+        }
+
+        self.scanEntries.removeAll { result.removedEntryIDs.contains($0.id) }
+        self.selectedEntryIDs.subtract(result.removedEntryIDs)
+        self.savedNowBytes = result.reclaimedBytes
+        self.allTimeSavedBytes += result.reclaimedBytes
+        self.hasCleanedInSession = true
+        self.defaults.set(self.savedNowBytes, forKey: StatsKey.lastSavedBytes)
+        self.defaults.set(self.allTimeSavedBytes, forKey: StatsKey.allTimeSavedBytes)
+        self.isCleaning = false
+        self.status = "Removed \(result.removed) path(s), failed \(result.failed), reclaimed \(self.formatBytes(result.reclaimedBytes))"
+        return result
+    }
+
+    private func summaries(from entries: [ScanEntry]) -> [TargetSummary] {
+        let grouped = Dictionary(grouping: entries, by: \.targetID)
+            .mapValues { items in items.reduce(0) { $0 + $1.size } }
+
+        return allTargets.compactMap { target in
+            guard let size = grouped[target.id], size > 0 else { return nil }
+            return TargetSummary(id: target.id, target: target, size: size)
+        }
+        .sorted { $0.size > $1.size }
     }
 }

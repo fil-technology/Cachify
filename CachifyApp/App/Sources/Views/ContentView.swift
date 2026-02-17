@@ -1,8 +1,25 @@
 import SwiftUI
 
 struct ContentView: View {
+    private struct BarSlice: Identifiable {
+        let id: String
+        let summary: TargetSummary
+        let startX: CGFloat
+        let width: CGFloat
+
+        var midX: CGFloat {
+            startX + (width / 2)
+        }
+    }
+
+    private struct HoveredBarInfo {
+        let id: String
+        let summary: TargetSummary
+        let midX: CGFloat
+    }
+
     @StateObject private var vm = CleanerViewModel()
-    @State private var hoveredBarSummary: TargetSummary?
+    @State private var hoveredBarInfo: HoveredBarInfo?
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -49,10 +66,10 @@ struct ContentView: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
-                    if vm.totalBytes > 0 {
-                        Text(vm.formatBytes(vm.totalBytes))
+                    if vm.displayedTotalBytes > 0 {
+                        Text(vm.formatBytes(vm.displayedTotalBytes))
                             .font(.system(size: 26, weight: .semibold, design: .rounded))
-                        Text("Reclaimable")
+                        Text(vm.isShowingSnapshotData ? "Last scan snapshot" : "Reclaimable")
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -60,7 +77,11 @@ struct ContentView: View {
 
             HStack(spacing: 10) {
                 if vm.savedNowBytes > 0 {
-                    statPill(title: "Saved now", value: vm.formatBytes(vm.savedNowBytes), color: .green)
+                    statPill(
+                        title: vm.hasCleanedInSession ? "Saved now" : "Saved last time",
+                        value: vm.formatBytes(vm.savedNowBytes),
+                        color: .green
+                    )
                 }
                 if vm.allTimeSavedBytes > 0 {
                     statPill(title: "All-time saved", value: vm.formatBytes(vm.allTimeSavedBytes), color: .mint)
@@ -93,55 +114,54 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             GeometryReader { proxy in
                 let width = max(proxy.size.width, 1)
-                let total = max(vm.totalBytes, 1)
+                let summaries = vm.displayedTargetSummaries
+                let total = max(summaries.reduce(0) { $0 + $1.size }, 1)
+                let slices = storageSlices(for: summaries, width: width, total: total)
 
-                HStack(spacing: 1) {
-                    ForEach(vm.targetSummaries) { summary in
-                        let fraction = Double(summary.size) / Double(total)
-                        Rectangle()
-                            .fill(vm.style(for: summary.id).color.gradient)
-                            .frame(width: max(6, width * fraction))
-                            .contentShape(Rectangle())
-                            .onHover { hovering in
-                                if hovering {
-                                    hoveredBarSummary = summary
-                                } else if hoveredBarSummary?.id == summary.id {
-                                    hoveredBarSummary = nil
+                ZStack(alignment: .topLeading) {
+                    HStack(spacing: 1) {
+                        ForEach(slices) { slice in
+                            Rectangle()
+                                .fill(vm.style(for: slice.summary.id).color.gradient)
+                                .frame(width: slice.width)
+                                .contentShape(Rectangle())
+                                .onHover { hovering in
+                                    if hovering {
+                                        hoveredBarInfo = HoveredBarInfo(
+                                            id: slice.id,
+                                            summary: slice.summary,
+                                            midX: slice.midX
+                                        )
+                                    } else if hoveredBarInfo?.id == slice.id {
+                                        hoveredBarInfo = nil
+                                    }
                                 }
-                            }
-                            .help("\(summary.target.name)\n\(vm.formatBytes(summary.size))")
-                    }
+                                .help("\(slice.summary.target.name)\n\(vm.formatBytes(slice.summary.size))")
+                        }
 
-                    if vm.targetSummaries.isEmpty {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.25))
-                            .help("No scanned cache data")
+                        if summaries.isEmpty {
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.25))
+                                .help("No scanned cache data")
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+
+                    if let hovered = hoveredBarInfo {
+                        tooltipView(summary: hovered.summary)
+                            .position(
+                                x: max(100, min(width - 100, hovered.midX)),
+                                y: -16
+                            )
+                            .allowsHitTesting(false)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
             .frame(height: 20)
 
-            if let hovered = hoveredBarSummary {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(vm.style(for: hovered.id).color)
-                        .frame(width: 8, height: 8)
-                    Text(hovered.target.name)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(vm.formatBytes(hovered.size))
-                        .font(.caption.monospacedDigit())
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.white.opacity(0.08), in: Capsule(style: .continuous))
-                .transition(.opacity)
-            }
-
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    ForEach(vm.targetSummaries) { summary in
+                    ForEach(vm.displayedTargetSummaries) { summary in
                         HStack(spacing: 6) {
                             Circle()
                                 .fill(vm.style(for: summary.id).color)
@@ -359,5 +379,46 @@ struct ContentView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Color.white.opacity(0.06), in: Capsule(style: .continuous))
+    }
+
+    private func storageSlices(for summaries: [TargetSummary], width: CGFloat, total: Int64) -> [BarSlice] {
+        var cursor: CGFloat = 0
+        var slices: [BarSlice] = []
+
+        for summary in summaries {
+            let fraction = Double(summary.size) / Double(total)
+            let sliceWidth = max(6, width * fraction)
+            slices.append(
+                BarSlice(
+                    id: summary.id,
+                    summary: summary,
+                    startX: cursor,
+                    width: sliceWidth
+                )
+            )
+            cursor += sliceWidth + 1
+        }
+
+        return slices
+    }
+
+    private func tooltipView(summary: TargetSummary) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(vm.style(for: summary.id).color)
+                .frame(width: 8, height: 8)
+            Text(summary.target.name)
+                .font(.caption)
+            Text(vm.formatBytes(summary.size))
+                .font(.caption.monospacedDigit())
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+        .overlay(
+            Capsule(style: .continuous)
+                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.22), radius: 8, x: 0, y: 4)
     }
 }
