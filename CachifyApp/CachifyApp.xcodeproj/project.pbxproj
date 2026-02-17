@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2F9417E5257ABE9BCD7227F3 /* FolderAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B598AFB0E09C13576B5B03DD /* FolderAccessManager.swift */; };
 		35CF82AA20053F7CE0BE8A26 /* CacheCleaner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20EACBBE5E4323946CA480F0 /* CacheCleaner.swift */; };
 		56C70DD7590CC3DEF7C8D4F2 /* SkeletonBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B59B507C9BA23C300B81499 /* SkeletonBlock.swift */; };
 		5B191C1DB75A62BEB0B43C52 /* ActionArcRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6746D519F682E1DA9C5BA31F /* ActionArcRing.swift */; };
@@ -27,6 +28,7 @@
 		98636D6ED62065256222F899 /* CachifyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachifyApp.swift; sourceTree = "<group>"; };
 		9B59B507C9BA23C300B81499 /* SkeletonBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonBlock.swift; sourceTree = "<group>"; };
 		A93942193770B52AD2485EDB /* CleanerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanerViewModel.swift; sourceTree = "<group>"; };
+		B598AFB0E09C13576B5B03DD /* FolderAccessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderAccessManager.swift; sourceTree = "<group>"; };
 		B668BB27E972C2F448A9C6D8 /* CacheCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheCatalog.swift; sourceTree = "<group>"; };
 		BE88D73C0B5F74206ECCB03C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -106,6 +108,7 @@
 			isa = PBXGroup;
 			children = (
 				20EACBBE5E4323946CA480F0 /* CacheCleaner.swift */,
+				B598AFB0E09C13576B5B03DD /* FolderAccessManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -201,6 +204,7 @@
 				FE5C7E3CFB65EF5B1AC9D541 /* CachifyApp.swift in Sources */,
 				8401BF02534F0C05783C3DF8 /* CleanerViewModel.swift in Sources */,
 				9CCF9FDE2CBB200E18E17E37 /* ContentView.swift in Sources */,
+				2F9417E5257ABE9BCD7227F3 /* FolderAccessManager.swift in Sources */,
 				56C70DD7590CC3DEF7C8D4F2 /* SkeletonBlock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -260,7 +264,7 @@
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.filtechnology.cachify;
+				PRODUCT_BUNDLE_IDENTIFIER = fil.technology.cachify;
 				PRODUCT_NAME = Cachify;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -276,6 +280,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/CachifyApp.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Cachify;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © Fil Technology";
@@ -364,7 +369,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.filtechnology.cachify;
+				PRODUCT_BUNDLE_IDENTIFIER = fil.technology.cachify;
 				PRODUCT_NAME = Cachify;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;

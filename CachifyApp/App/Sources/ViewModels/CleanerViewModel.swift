@@ -18,13 +18,18 @@ final class CleanerViewModel: ObservableObject {
     @Published var hasScanned = false
     @Published var savedNowBytes: Int64
     @Published var allTimeSavedBytes: Int64
+    @Published var hasFolderAccess = false
+    @Published var folderAccessPath: String?
 
     private let cleaner = CacheCleaner()
+    private let folderAccessManager = FolderAccessManager()
     private let defaults = UserDefaults.standard
 
     init() {
         self.savedNowBytes = defaults.object(forKey: StatsKey.lastSavedBytes) as? Int64 ?? 0
         self.allTimeSavedBytes = defaults.object(forKey: StatsKey.allTimeSavedBytes) as? Int64 ?? 0
+        self.hasFolderAccess = folderAccessManager.hasAccess
+        self.folderAccessPath = folderAccessManager.folderPath
     }
 
     var scopedEntries: [ScanEntry] {
@@ -115,9 +120,32 @@ final class CleanerViewModel: ObservableObject {
         }
     }
 
+    func handleOnAppear() {
+        if hasFolderAccess {
+            scan()
+        } else {
+            status = "Grant Home folder access to scan caches in the exported app."
+        }
+    }
+
+    func requestFolderAccess() {
+        if folderAccessManager.requestHomeFolderAccess() {
+            hasFolderAccess = true
+            folderAccessPath = folderAccessManager.folderPath
+            status = "Access granted. Scanning..."
+            scan()
+        } else {
+            status = "Home folder access is required to scan in sandbox mode."
+        }
+    }
+
     func scan() {
         guard !selectedTargets.isEmpty else {
             status = "Select at least one target"
+            return
+        }
+        guard hasFolderAccess else {
+            status = "Grant Home folder access first."
             return
         }
 
@@ -126,7 +154,13 @@ final class CleanerViewModel: ObservableObject {
         let targets = selectedTargets
 
         Task {
-            let results = await cleaner.scan(targets: targets)
+            guard let results = await folderAccessManager.withSecurityScopedAccess({
+                await cleaner.scan(targets: targets)
+            }) else {
+                self.isScanning = false
+                self.status = "Unable to access selected folder."
+                return
+            }
             self.scanEntries = results
             self.selectedEntryIDs = Set(results.map(\.id))
             self.hasScanned = true
@@ -142,13 +176,23 @@ final class CleanerViewModel: ObservableObject {
 
     func clean() {
         guard canClean else { return }
+        guard hasFolderAccess else {
+            status = "Grant Home folder access first."
+            return
+        }
 
         isCleaning = true
         status = "Cleaning selected caches..."
         let entries = selectedEntriesForCleaning
 
         Task {
-            let result = await cleaner.clean(entries: entries)
+            guard let result = await folderAccessManager.withSecurityScopedAccess({
+                await cleaner.clean(entries: entries)
+            }) else {
+                self.isCleaning = false
+                self.status = "Unable to access selected folder."
+                return
+            }
             self.scanEntries.removeAll { result.removedEntryIDs.contains($0.id) }
             self.selectedEntryIDs.subtract(result.removedEntryIDs)
             self.savedNowBytes = result.reclaimedBytes

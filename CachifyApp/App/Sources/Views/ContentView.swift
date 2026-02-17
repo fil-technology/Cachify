@@ -34,7 +34,7 @@ struct ContentView: View {
             Text("This will remove \(vm.selectedEntriesForCleaning.count) selected path(s), up to \(vm.formatBytes(vm.selectedCleanBytes)).")
         }
         .onAppear {
-            vm.scan()
+            vm.handleOnAppear()
         }
     }
 
@@ -64,6 +64,13 @@ struct ContentView: View {
                 }
                 if vm.allTimeSavedBytes > 0 {
                     statPill(title: "All-time saved", value: vm.formatBytes(vm.allTimeSavedBytes), color: .mint)
+                }
+                if !vm.hasFolderAccess {
+                    Button("Grant Home Access") {
+                        vm.requestFolderAccess()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
                 }
                 Spacer()
             }
@@ -292,15 +299,18 @@ struct ContentView: View {
     }
 
     private var floatingActionButton: some View {
+        let needsAccess = !vm.hasFolderAccess
         let isActionClean = vm.hasScanned && vm.canClean && !vm.isScanning
         let isBusy = vm.isScanning || vm.isCleaning
-        let actionTitle = vm.isScanning ? "Scanning" : (vm.isCleaning ? "Deleting" : (isActionClean ? "Delete" : "Scan"))
-        let actionIcon = (vm.isCleaning || isActionClean) ? "trash.fill" : "magnifyingglass"
-        let actionColor = (vm.isCleaning || isActionClean) ? Color.red : Color.accentColor
+        let actionTitle = needsAccess ? "Grant Access" : (vm.isScanning ? "Scanning" : (vm.isCleaning ? "Deleting" : (isActionClean ? "Delete" : "Scan")))
+        let actionIcon = needsAccess ? "folder.badge.plus" : ((vm.isCleaning || isActionClean) ? "trash.fill" : "magnifyingglass")
+        let actionColor = needsAccess ? Color.orange : ((vm.isCleaning || isActionClean) ? Color.red : Color.accentColor)
 
         return Button {
             if isBusy { return }
-            if isActionClean {
+            if needsAccess {
+                vm.requestFolderAccess()
+            } else if isActionClean {
                 vm.requestClean()
             } else {
                 vm.scan()
@@ -325,12 +335,12 @@ struct ContentView: View {
                 .stroke(Color.white.opacity(0.35), lineWidth: 1)
         )
         .overlay {
-            if vm.isScanning || vm.isCleaning {
+            if !needsAccess && (vm.isScanning || vm.isCleaning) {
                 ActionArcRing(color: vm.isCleaning ? .red : .accentColor)
             }
         }
         .shadow(color: actionColor.opacity(0.35), radius: 12, x: 0, y: 8)
-        .disabled((!vm.canScan && !isActionClean) || isBusy)
+        .disabled((!needsAccess && !vm.canScan && !isActionClean) || isBusy)
         .padding(.bottom, 10)
     }
 
