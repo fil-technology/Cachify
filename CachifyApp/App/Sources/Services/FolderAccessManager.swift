@@ -22,7 +22,7 @@ final class FolderAccessManager {
         folderURL?.path
     }
 
-    func requestHomeFolderAccess() -> Bool {
+    func requestHomeFolderAccess() async -> Bool {
         let panel = NSOpenPanel()
         panel.title = "Grant Folder Access"
         panel.message = "Select your home folder so Cachify can scan cache directories in sandbox mode."
@@ -33,7 +33,18 @@ final class FolderAccessManager {
         panel.canCreateDirectories = false
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
 
-        guard panel.runModal() == .OK, let selected = panel.url else {
+        let response: NSApplication.ModalResponse
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow {
+            response = await withCheckedContinuation { continuation in
+                panel.beginSheetModal(for: window) { modalResponse in
+                    continuation.resume(returning: modalResponse)
+                }
+            }
+        } else {
+            response = panel.runModal()
+        }
+
+        guard response == .OK, let selected = panel.url else {
             return false
         }
 

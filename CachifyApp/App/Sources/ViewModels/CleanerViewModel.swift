@@ -129,13 +129,16 @@ final class CleanerViewModel: ObservableObject {
     }
 
     func requestFolderAccess() {
-        if folderAccessManager.requestHomeFolderAccess() {
-            hasFolderAccess = true
-            folderAccessPath = folderAccessManager.folderPath
-            status = "Access granted. Scanning..."
-            scan()
-        } else {
-            status = "Home folder access is required to scan in sandbox mode."
+        status = "Opening folder picker..."
+        Task {
+            if await folderAccessManager.requestHomeFolderAccess() {
+                hasFolderAccess = true
+                folderAccessPath = folderAccessManager.folderPath
+                status = "Access granted. Scanning..."
+                scan()
+            } else {
+                status = "Folder access not granted."
+            }
         }
     }
 
