@@ -3,6 +3,13 @@ import Foundation
 
 @MainActor
 final class FolderAccessManager {
+    enum RequestResult {
+        case granted(path: String)
+        case cancelled
+        case wrongFolder(expected: String)
+        case failed
+    }
+
     private enum StorageKey {
         static let homeFolderBookmark = "cachify.home_folder_bookmark"
     }
@@ -22,7 +29,7 @@ final class FolderAccessManager {
         folderURL?.path
     }
 
-    func requestHomeFolderAccess() async -> Bool {
+    func requestHomeFolderAccess() async -> RequestResult {
         let panel = NSOpenPanel()
         panel.title = "Grant Folder Access"
         panel.message = "Select your home folder so Cachify can scan cache directories in sandbox mode."
@@ -45,20 +52,26 @@ final class FolderAccessManager {
         }
 
         guard response == .OK, let selected = panel.url else {
-            return false
+            return .cancelled
+        }
+
+        let expectedHome = FileManager.default.homeDirectoryForCurrentUser.path
+        guard selected.path == expectedHome else {
+            return .wrongFolder(expected: expectedHome)
         }
 
         guard saveBookmark(for: selected) else {
-            return false
+            return .failed
         }
 
         folderURL = selected
-        return true
+        return .granted(path: selected.path)
     }
 
     func withSecurityScopedAccess<T>(_ work: () async -> T) async -> T? {
         guard let folderURL else { return nil }
         let started = folderURL.startAccessingSecurityScopedResource()
+        guard started else { return nil }
         defer {
             if started {
                 folderURL.stopAccessingSecurityScopedResource()

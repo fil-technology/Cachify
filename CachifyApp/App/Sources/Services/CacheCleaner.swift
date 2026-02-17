@@ -2,10 +2,14 @@ import Foundation
 
 actor CacheCleaner {
     private let fileManager = FileManager.default
-    private let homePath: String
+    private var homePath: String
 
     init() {
         self.homePath = fileManager.homeDirectoryForCurrentUser.path
+    }
+
+    func setHomePath(_ path: String) {
+        homePath = path
     }
 
     func scan(targets: [CacheTarget]) -> [ScanEntry] {
@@ -68,7 +72,7 @@ actor CacheCleaner {
     }
 
     private func expand(pattern: String) -> [String] {
-        let expanded = (pattern as NSString).expandingTildeInPath
+        let expanded = expandHomePrefix(in: pattern)
         if !expanded.contains("*") {
             return [expanded]
         }
@@ -96,6 +100,16 @@ actor CacheCleaner {
         }
 
         return bases
+    }
+
+    private func expandHomePrefix(in pattern: String) -> String {
+        if pattern == "~" {
+            return homePath
+        }
+        if pattern.hasPrefix("~/") {
+            return homePath + "/" + String(pattern.dropFirst(2))
+        }
+        return (pattern as NSString).expandingTildeInPath
     }
 
     private func join(base: String, component: String) -> String {
@@ -183,7 +197,7 @@ actor CacheCleaner {
     }
 
     private func isSafeToDelete(path: String) -> Bool {
-        let expanded = (path as NSString).expandingTildeInPath
+        let expanded = expandHomePrefix(in: path)
         if expanded == homePath {
             return false
         }

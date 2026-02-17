@@ -30,6 +30,9 @@ final class CleanerViewModel: ObservableObject {
         self.allTimeSavedBytes = defaults.object(forKey: StatsKey.allTimeSavedBytes) as? Int64 ?? 0
         self.hasFolderAccess = folderAccessManager.hasAccess
         self.folderAccessPath = folderAccessManager.folderPath
+        if let folderAccessPath {
+            Task { await cleaner.setHomePath(folderAccessPath) }
+        }
     }
 
     var scopedEntries: [ScanEntry] {
@@ -131,13 +134,19 @@ final class CleanerViewModel: ObservableObject {
     func requestFolderAccess() {
         status = "Opening folder picker..."
         Task {
-            if await folderAccessManager.requestHomeFolderAccess() {
+            switch await folderAccessManager.requestHomeFolderAccess() {
+            case .granted(let path):
                 hasFolderAccess = true
-                folderAccessPath = folderAccessManager.folderPath
+                folderAccessPath = path
+                await cleaner.setHomePath(path)
                 status = "Access granted. Scanning..."
                 scan()
-            } else {
-                status = "Folder access not granted."
+            case .cancelled:
+                status = "Folder access canceled."
+            case .wrongFolder(let expected):
+                status = "Select your Home folder: \(expected)"
+            case .failed:
+                status = "Failed to store folder access permission."
             }
         }
     }
