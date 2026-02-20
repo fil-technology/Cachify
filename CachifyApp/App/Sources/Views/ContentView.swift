@@ -20,6 +20,9 @@ struct ContentView: View {
 
     @StateObject private var vm = CleanerViewModel()
     @State private var hoveredBarInfo: HoveredBarInfo?
+    @State private var hoveredTargetID: String?
+    @State private var inspectorTargetID: String?
+    @State private var inspectorSelectedEntryIDs: Set<UUID> = []
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -34,7 +37,6 @@ struct ContentView: View {
                 VStack(spacing: 14) {
                     headerCard
                     targetCard
-                    resultsCard
                 }
                 .padding(.top, 16)
                 .padding(.horizontal, 16)
@@ -55,6 +57,43 @@ struct ContentView: View {
             DispatchQueue.main.async {
                 NSApp.activate(ignoringOtherApps: true)
                 NSApp.windows.first?.makeKeyAndOrderFront(nil)
+            }
+        }
+        .onReceive(vm.$scanEntries) { _ in
+            syncInspectorSelection()
+        }
+        .sheet(isPresented: Binding(
+            get: { inspectorTargetID != nil },
+            set: { show in
+                if !show {
+                    inspectorTargetID = nil
+                    inspectorSelectedEntryIDs.removeAll()
+                }
+            }
+        )) {
+            if let targetID = inspectorTargetID, let target = vm.target(for: targetID) {
+                TargetInspectorSheet(
+                    target: target,
+                    entries: vm.entries(for: targetID),
+                    isCleaning: vm.isCleaning,
+                    formatBytes: vm.formatBytes,
+                    onDeleteSelected: { entries in
+                        vm.clean(entries: entries)
+                        inspectorSelectedEntryIDs.subtract(entries.map { $0.id })
+                    },
+                    onDeleteSingle: { entry in
+                        vm.clean(entries: [entry])
+                        inspectorSelectedEntryIDs.remove(entry.id)
+                    },
+                    onClose: {
+                        inspectorTargetID = nil
+                        inspectorSelectedEntryIDs.removeAll()
+                    },
+                    selectedEntryIDs: $inspectorSelectedEntryIDs
+                )
+            } else {
+                Text("No target selected.")
+                    .frame(minWidth: 480, minHeight: 300)
             }
         }
     }
@@ -188,142 +227,25 @@ struct ContentView: View {
     }
 
     private var targetCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Cleanup Targets")
-                    .font(.title3.weight(.semibold))
-                Spacer()
-                Button("Select All") { vm.selectAll() }
-                Button("Deselect All") { vm.clearSelection() }
-            }
-
-            let targets = vm.sortedTargets
-            ForEach(Array(targets.enumerated()), id: \.element.id) { index, target in
-                let style = vm.style(for: target.id)
-                HStack(spacing: 12) {
-                    Image(systemName: style.icon)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(style.color)
-                        .frame(width: 28, height: 28)
-                        .background(style.color.opacity(0.18), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(target.name)
-                            .font(.body.weight(.medium))
-                        Text(target.details)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if vm.isScanning {
-                        SkeletonBlock(width: 72, height: 16, cornerRadius: 6)
-                            .frame(minWidth: 90, alignment: .trailing)
-                    } else if vm.targetSize(for: target.id) > 0 {
-                        Text(vm.formatBytes(vm.targetSize(for: target.id)))
-                            .font(.callout.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .frame(minWidth: 90, alignment: .trailing)
-                    }
-
-                    Toggle("", isOn: Binding(
-                        get: { vm.selectedTargetIDs.contains(target.id) },
-                        set: { isOn in vm.setTargetSelection(targetID: target.id, isOn: isOn) }
-                    ))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                }
-                .padding(.vertical, 6)
-
-                if index < targets.count - 1 {
-                    Divider().opacity(0.45)
-                }
-            }
-        }
-        .padding(18)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        TargetCleanupCard(
+            targets: vm.sortedTargets,
+            selectedTargetIDs: vm.selectedTargetIDs,
+            hoveredTargetID: hoveredTargetID,
+            isScanning: vm.isScanning,
+            formatBytes: vm.formatBytes,
+            targetSize: vm.targetSize,
+            styleFor: vm.style,
+            onSelectAll: vm.selectAll,
+            onDeselectAll: vm.clearSelection,
+            onHover: { targetID in
+                hoveredTargetID = targetID
+            },
+            onOpenTarget: { targetID in
+                inspectorTargetID = targetID
+                inspectorSelectedEntryIDs = Set(vm.entries(for: targetID).map(\.id))
+            },
+            onTargetSelectionChanged: vm.setTargetSelection
         )
-    }
-
-    private var resultsCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Detected Cache Paths")
-                    .font(.title3.weight(.semibold))
-                Spacer()
-                Text("\(vm.scopedEntries.count) item(s)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            if vm.isScanning {
-                skeletonResults
-            } else if vm.scopedEntries.isEmpty {
-                Text("No cache paths found for selected targets.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 10)
-            } else {
-                LazyVStack(spacing: 6) {
-                    ForEach(vm.scopedEntries) { entry in
-                        let style = vm.style(for: entry.targetID)
-                        HStack(spacing: 10) {
-                            Toggle("", isOn: Binding(
-                                get: { vm.isEntrySelected(entry) },
-                                set: { isOn in vm.setEntrySelection(entry: entry, isOn: isOn) }
-                            ))
-                            .toggleStyle(.checkbox)
-
-                            Circle()
-                                .fill(style.color)
-                                .frame(width: 8, height: 8)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(entry.path)
-                                    .font(.caption.monospaced())
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                Text(entry.targetID)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Text(vm.formatBytes(entry.size))
-                                .font(.callout.monospacedDigit())
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    }
-                }
-            }
-        }
-        .padding(18)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
-        )
-    }
-
-    private var skeletonResults: some View {
-        LazyVStack(spacing: 8) {
-            ForEach(0..<6, id: \.self) { _ in
-                HStack(spacing: 10) {
-                    SkeletonBlock(width: 14, height: 14, cornerRadius: 7)
-                    VStack(alignment: .leading, spacing: 6) {
-                        SkeletonBlock(width: 420, height: 12, cornerRadius: 6)
-                        SkeletonBlock(width: 120, height: 10, cornerRadius: 5)
-                    }
-                    Spacer()
-                    SkeletonBlock(width: 74, height: 14, cornerRadius: 6)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            }
-        }
     }
 
     private var floatingActionButton: some View {
@@ -405,6 +327,12 @@ struct ContentView: View {
         }
         .font(.footnote)
         .tint(.secondary)
+    }
+
+    private func syncInspectorSelection() {
+        guard let targetID = inspectorTargetID else { return }
+        let validIDs = Set(vm.entries(for: targetID).map(\.id))
+        inspectorSelectedEntryIDs = inspectorSelectedEntryIDs.intersection(validIDs)
     }
 
     private func storageSlices(for summaries: [TargetSummary], width: CGFloat, total: Int64) -> [BarSlice] {
