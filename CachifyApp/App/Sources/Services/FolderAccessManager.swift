@@ -1,11 +1,19 @@
 import AppKit
 import Foundation
+import Darwin
 
 @MainActor
 final class FolderAccessManager {
+    struct AccessScopeResult<T> {
+        let value: T
+        let startedSecurityScope: Bool
+        let path: String
+    }
+
     enum RequestResult {
         case granted(path: String)
         case cancelled
+        case wrongFolder(expected: String, selected: String)
         case failed
     }
 
@@ -26,6 +34,13 @@ final class FolderAccessManager {
 
     var folderPath: String? {
         folderURL?.path
+    }
+
+    var debugContext: String {
+        let runtimeHome = NSHomeDirectory()
+        let realHome = NSHomeDirectoryForUser(NSUserName()) ?? "n/a"
+        let selected = folderURL?.path ?? "none"
+        return "selected=\(selected), runtimeHome=\(runtimeHome), realHome=\(realHome)"
     }
 
     func requestHomeFolderAccess() async -> RequestResult {
@@ -54,6 +69,11 @@ final class FolderAccessManager {
             return .cancelled
         }
 
+        let expectedHome = realUserHomePath()
+        guard selected.path == expectedHome else {
+            return .wrongFolder(expected: expectedHome, selected: selected.path)
+        }
+
         guard saveBookmark(for: selected) else {
             return .failed
         }
@@ -62,16 +82,16 @@ final class FolderAccessManager {
         return .granted(path: selected.path)
     }
 
-    func withSecurityScopedAccess<T>(_ work: () async -> T) async -> T? {
+    func withSecurityScopedAccess<T>(_ work: () async -> T) async -> AccessScopeResult<T>? {
         guard let folderURL else { return nil }
         let started = folderURL.startAccessingSecurityScopedResource()
-        guard started else { return nil }
         defer {
             if started {
                 folderURL.stopAccessingSecurityScopedResource()
             }
         }
-        return await work()
+        let value = await work()
+        return AccessScopeResult(value: value, startedSecurityScope: started, path: folderURL.path)
     }
 
     private func saveBookmark(for url: URL) -> Bool {
@@ -102,7 +122,7 @@ final class FolderAccessManager {
                 _ = saveBookmark(for: url)
             }
 
-            if isLikelySandboxContainer(url.path) {
+            if isLikelySandboxContainer(url.path) || !isRealHomePath(url.path) {
                 defaults.removeObject(forKey: StorageKey.homeFolderBookmark)
                 return nil
             }
@@ -115,23 +135,61 @@ final class FolderAccessManager {
     }
 
     private func preferredUserHomeURL() -> URL {
-        let username = NSUserName()
-        if let path = NSHomeDirectoryForUser(username),
-           !path.isEmpty {
-            return URL(fileURLWithPath: path)
+        URL(fileURLWithPath: realUserHomePath())
+    }
+
+    private func realUserHomePath() -> String {
+        if let path = posixUserHomePath(), !path.isEmpty {
+            return path
         }
-        return FileManager.default.homeDirectoryForCurrentUser
+
+        let runtime = NSHomeDirectory()
+        if let unsandboxed = unsandboxedHomePath(from: runtime) {
+            return unsandboxed
+        }
+
+        let username = NSUserName()
+        if let path = NSHomeDirectoryForUser(username), !path.isEmpty {
+            if let unsandboxed = unsandboxedHomePath(from: path) {
+                return unsandboxed
+            }
+            return path
+        }
+
+        return FileManager.default.homeDirectoryForCurrentUser.path
+    }
+
+    private func isRealHomePath(_ path: String) -> Bool {
+        path == realUserHomePath()
     }
 
     private func isLikelySandboxContainer(_ path: String) -> Bool {
         let runtimeHome = NSHomeDirectory()
-        let username = NSUserName()
-        let realHome = NSHomeDirectoryForUser(username) ?? runtimeHome
+        let realHome = realUserHomePath()
 
         let looksLikeContainer = runtimeHome.contains("/Library/Containers/")
         let pointsToRuntimeHome = path == runtimeHome
         let differsFromRealHome = runtimeHome != realHome
 
         return looksLikeContainer && pointsToRuntimeHome && differsFromRealHome
+    }
+
+    private func posixUserHomePath() -> String? {
+        guard let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir else {
+            return nil
+        }
+        return String(cString: home)
+    }
+
+    private func unsandboxedHomePath(from path: String) -> String? {
+        let marker = "/Library/Containers/"
+        guard let markerRange = path.range(of: marker) else {
+            return nil
+        }
+        let prefix = String(path[..<markerRange.lowerBound])
+        if prefix.hasPrefix("/Users/"), prefix.split(separator: "/").count >= 2 {
+            return prefix
+        }
+        return nil
     }
 }

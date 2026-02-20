@@ -22,6 +22,7 @@ final class CleanerViewModel: ObservableObject {
     @Published var folderAccessPath: String?
     @Published private(set) var lastNonEmptyScanEntries: [ScanEntry] = []
     @Published private(set) var hasCleanedInSession = false
+    @Published private(set) var diagnostics: [String] = []
 
     private let cleaner = CacheCleaner()
     private let folderAccessManager = FolderAccessManager()
@@ -32,6 +33,7 @@ final class CleanerViewModel: ObservableObject {
         self.allTimeSavedBytes = defaults.object(forKey: StatsKey.allTimeSavedBytes) as? Int64 ?? 0
         self.hasFolderAccess = folderAccessManager.hasAccess
         self.folderAccessPath = folderAccessManager.folderPath
+        addDiagnostic("App launch: \(folderAccessManager.debugContext)")
         if let folderAccessPath {
             Task { await cleaner.setHomePath(folderAccessPath) }
         }
@@ -164,11 +166,17 @@ final class CleanerViewModel: ObservableObject {
                 folderAccessPath = path
                 await cleaner.setHomePath(path)
                 status = "Access granted for \(path). Scanning..."
+                addDiagnostic("Folder access granted: \(path)")
                 scan()
             case .cancelled:
                 status = "Folder access canceled."
+                addDiagnostic("Folder access canceled by user")
+            case .wrongFolder(let expected, let selected):
+                status = "Select your Home folder: \(expected)"
+                addDiagnostic("Folder access rejected: selected=\(selected), expected=\(expected)")
             case .failed:
                 status = "Failed to store folder access permission."
+                addDiagnostic("Folder access failed: unable to persist bookmark")
             }
         }
     }
@@ -186,14 +194,28 @@ final class CleanerViewModel: ObservableObject {
         isScanning = true
         status = "Scanning cache paths..."
         let targets = selectedTargets
+        addDiagnostic("Scan start: targets=\(targets.count), selectedPath=\(folderAccessPath ?? "none")")
 
         Task {
-            guard let results = await folderAccessManager.withSecurityScopedAccess({
+            guard let access = await folderAccessManager.withSecurityScopedAccess({
                 await cleaner.scan(targets: targets)
             }) else {
                 self.isScanning = false
                 self.status = "Unable to access selected folder."
+                self.addDiagnostic("Scan failed: no folder access context. \(self.folderAccessManager.debugContext)")
                 return
+            }
+            let scanResult = access.value
+            let results = scanResult.entries
+            let scanDiagnostics = scanResult.diagnostics
+            if !access.startedSecurityScope {
+                self.addDiagnostic("Scan warning: security-scoped access was not started for \(access.path), continuing with fallback.")
+            }
+            self.addDiagnostic(
+                "Scan summary: candidates=\(scanDiagnostics.candidateCount), existing=\(scanDiagnostics.existingCount), nonZero=\(scanDiagnostics.sizedCount), zero=\(scanDiagnostics.zeroSizedCount), traversalErrors=\(scanDiagnostics.traversalErrorCount)"
+            )
+            for message in scanDiagnostics.sampleErrors {
+                self.addDiagnostic("Scan error sample: \(message)")
             }
 
             // Update only the targets being scanned so a narrow scan (e.g. Docker only)
@@ -271,12 +293,17 @@ final class CleanerViewModel: ObservableObject {
     }
 
     private func performClean(entries: [ScanEntry]) async -> (removed: Int, failed: Int, reclaimedBytes: Int64, removedEntryIDs: Set<UUID>)? {
-        guard let result = await folderAccessManager.withSecurityScopedAccess({
+        guard let access = await folderAccessManager.withSecurityScopedAccess({
             await cleaner.clean(entries: entries)
         }) else {
             self.isCleaning = false
             self.status = "Unable to access selected folder."
+            self.addDiagnostic("Clean failed: no folder access context. \(self.folderAccessManager.debugContext)")
             return nil
+        }
+        let result = access.value
+        if !access.startedSecurityScope {
+            addDiagnostic("Clean warning: security-scoped access was not started for \(access.path), continuing with fallback.")
         }
 
         self.scanEntries.removeAll { result.removedEntryIDs.contains($0.id) }
@@ -288,6 +315,7 @@ final class CleanerViewModel: ObservableObject {
         self.defaults.set(self.allTimeSavedBytes, forKey: StatsKey.allTimeSavedBytes)
         self.isCleaning = false
         self.status = "Removed \(result.removed) path(s), failed \(result.failed), reclaimed \(self.formatBytes(result.reclaimedBytes))"
+        self.addDiagnostic("Clean summary: removed=\(result.removed), failed=\(result.failed), reclaimed=\(self.formatBytes(result.reclaimedBytes))")
         return result
     }
 
@@ -300,5 +328,15 @@ final class CleanerViewModel: ObservableObject {
             return TargetSummary(id: target.id, target: target, size: size)
         }
         .sorted { $0.size > $1.size }
+    }
+
+    private func addDiagnostic(_ message: String) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        let line = "[\(formatter.string(from: Date()))] \(message)"
+        diagnostics.append(line)
+        if diagnostics.count > 60 {
+            diagnostics.removeFirst(diagnostics.count - 60)
+        }
     }
 }

@@ -52,6 +52,10 @@ struct ContentView: View {
         }
         .onAppear {
             vm.handleOnAppear()
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                NSApp.windows.first?.makeKeyAndOrderFront(nil)
+            }
         }
     }
 
@@ -101,6 +105,10 @@ struct ContentView: View {
             Text(vm.status)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+            if !vm.diagnostics.isEmpty {
+                diagnosticsView
+            }
         }
         .padding(18)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -379,6 +387,24 @@ struct ContentView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Color.white.opacity(0.06), in: Capsule(style: .continuous))
+    }
+
+    private var diagnosticsView: some View {
+        DisclosureGroup("Diagnostics") {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(vm.diagnostics.suffix(10).enumerated()), id: \.offset) { _, line in
+                    Text(line)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(10)
+            .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .padding(.top, 4)
+        }
+        .font(.footnote)
+        .tint(.secondary)
     }
 
     private func storageSlices(for summaries: [TargetSummary], width: CGFloat, total: Int64) -> [BarSlice] {
